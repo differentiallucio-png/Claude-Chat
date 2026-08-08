@@ -2,7 +2,7 @@
 
 **Documento Guia:** Mantido em conjunto por Prof. Lúcio Fábio Pereira da Silva (ICET/UFAM) e pelos Agentes IAs (Antigravity/Gemini e Claude).  
 **Repositório:** `differentiallucio-png/Claude-Chat`  
-**Versão:** 3.0.0 (Atualização da Taxonomia E1/E2/E3 e migração para GitHub)
+**Versão:** 3.1.0 (Correção de Integridade: Proibição Estrita de Exemplos com Formato de DOI Real Não-Verificado)
 
 ---
 
@@ -11,7 +11,7 @@
 O **PROTOCOLO_BANCO_ENSAIOS** estabelece as regras de curadoria, inserção e consulta do `BANCO_ENSAIOS.md`. Ele orienta tanto os pesquisadores humanos quanto os assistentes de IA (Claude, Gemini, OpenCode) na utilização de exemplares reais de ensaios teóricos e artigos conceituais publicados em periódicos Qualis A (RBEF, CBEF, BOLEMA, REAMEC, Alexandria, REE-ABENGE, etc.).
 
 ### Princípios Fundamentais:
-1. **Fidelidade Empírica e Integridade Citacional:** NENHUM DADO BIBLIOGRÁFICO OU DOI PODE SER INVENTADO OU ESTIMADO. Todo exemplar registrado deve ter seu DOI e metadados verificados na fonte original.
+1. **Fidelidade Empírica Absoluta e Integridade Citacional:** NENHUM DADO BIBLIOGRÁFICO OU DOI PODE SER INVENTADO OU ESTIMADO. Todo exemplar registrado na seção de exemplares reais deve ter seu DOI e metadados obrigatoriamente verificados na fonte original (Crossref / site da revista). Exemplos de preenchimento de schema na documentação devem usar expressamente marcadores fictícios como `[DOI-EXEMPLO-NAO-USAR]` para evitar qualquer ambiguidade ou mimetismo com DOIs reais.
 2. **Dados Proporcionais são Descritivos, NUNCA Normativos:** As informações de porcentagem (% de Introdução, Desenvolvimento e Conclusão) e quantidade de páginas refletem **apenas o que o autor específico fez**. Elas servem para ilustrar a diversidade de arranjos publicados, e JAMAIS devem ser tratadas como meta rígida ou padrão normativo ("o ensaio deve ter X% de introdução").
 3. **Taxonomia Vigente de Registros Ensaísticos (E1, E2, E3):** Substituto oficial da antiga classificação (educacional-padrão vs. filosófico-historiográfico).
 
