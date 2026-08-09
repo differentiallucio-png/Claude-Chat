@@ -17,16 +17,41 @@ O que verifica, por skill:
   E6  coerencia entre a versao do frontmatter e a primeira versao mencionada
       no corpo do arquivo (padrao 'v1.2', 'versao 1.2', 'v2.6')
   E7  cercas de codigo ``` em numero par
+  E8  campo 'name' duplicado entre skills (mesmo nome usado por dois
+      diretorios diferentes)
+  E9  SKILL.md acima do limite absoluto de 500 linhas (ideal: 300)
+  E10 integridade de proveniencia de regras normativas marcadas com
+      [RULE: ID]. So se aplica a skills que optaram por marcar regras;
+      skill sem nenhuma marcacao [RULE: ...] passa sem erro (regra antiga
+      intocada = legacy, sem reprovacao retroativa). Verifica: (a) toda
+      tag [RULE: ID] no corpo tem entrada correspondente em
+      RULES_PROVENANCE.yml no mesmo diretorio; (b) toda entrada em
+      RULES_PROVENANCE.yml tem campo 'provenance' com valor A, B, C, D ou
+      legacy; (c) entrada tipo A ou B tem campo 'source' ou 'basis'
+      preenchido; (d) entrada tipo C nunca tem 'strength: hard-rule' nem
+      equivalente; (e) entrada tipo D nunca tem 'strength: literature-backed'.
 
-Saida: uma linha por achado, prefixada por ERRO ou AVISO, e um sumario.
+Saida: uma linha por achado, prefixada por ERRO, AVISO ou INFO, e um sumario.
 Codigo de retorno 1 se houver ERRO, 0 caso contrario.
 
 Este script nao altera nenhum arquivo.
+
+Restaurado em 07/08/2026 a partir da copia recuperavel em
+auditor-estilometrico-academico-reference/SKILL.md. Docstring corrigido
+nesta restauracao: documentava apenas E1-E7 embora o corpo ja implementasse
+E8 e E9 desde a versao anterior. Numeracao de E8/E9 preservada, nao
+renumerada. E10 acrescentado nesta mesma sessao, apos validacao da
+restauracao contra o oraculo de 30/07/2026.
 """
 
 import os
 import re
 import sys
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 LIMITE = 1024
@@ -106,6 +131,73 @@ def versao_compativel(frontmatter_ver, versoes_corpo):
     return False
 
 
+def valida_provenance(diretorio, corpo):
+    """E10 - integridade de proveniencia de regras marcadas com [RULE: ID].
+
+    Politica de transicao: skill sem nenhuma tag [RULE: ...] no corpo passa
+    sem erro (legacy, sem reprovacao retroativa). So entra em avaliacao
+    quando ha pelo menos uma tag marcada.
+    """
+    achados = []
+    tags = re.findall(r"\[RULE:\s*([A-Za-z0-9_-]+)\]", corpo)
+    if not tags:
+        return achados
+
+    caminho_yml = os.path.join(BASE, diretorio, "RULES_PROVENANCE.yml")
+    if not os.path.isfile(caminho_yml):
+        achados.append(("ERRO", "E10 %d tag(s) [RULE: ID] no corpo, mas "
+                                 "RULES_PROVENANCE.yml ausente" % len(tags)))
+        return achados
+
+    if yaml is None:
+        achados.append(("AVISO", "E10 RULES_PROVENANCE.yml presente, mas "
+                                  "PyYAML indisponivel neste ambiente para "
+                                  "validar o conteudo"))
+        return achados
+
+    try:
+        with open(caminho_yml, encoding="utf-8") as f:
+            dados = yaml.safe_load(f) or {}
+    except Exception as e:
+        achados.append(("ERRO", "E10 RULES_PROVENANCE.yml malformado: %s" % e))
+        return achados
+
+    regras = dados.get("rules", dados)
+    if not isinstance(regras, dict):
+        achados.append(("ERRO", "E10 RULES_PROVENANCE.yml sem mapa de regras "
+                                 "legivel"))
+        return achados
+
+    tipos_validos = {"A", "B", "C", "D", "legacy"}
+    for tag in tags:
+        entrada = regras.get(tag)
+        if entrada is None:
+            achados.append(("ERRO", "E10 tag [RULE: %s] no corpo sem entrada "
+                                     "em RULES_PROVENANCE.yml" % tag))
+            continue
+        prov = str(entrada.get("provenance", "")).strip()
+        if prov not in tipos_validos:
+            achados.append(("ERRO", "E10 regra %s com provenance invalido "
+                                     "'%s' (esperado A/B/C/D/legacy)"
+                            % (tag, prov)))
+            continue
+        strength = str(entrada.get("strength", "")).strip().lower()
+        strength_norm = re.sub(r"[_\s]+", "-", strength)
+        if prov in ("A", "B") and not (entrada.get("source") or entrada.get("basis")):
+            achados.append(("ERRO", "E10 regra %s tipo %s sem campo 'source' "
+                                     "ou 'basis'" % (tag, prov)))
+        if prov == "C" and strength_norm == "hard-rule":
+            achados.append(("ERRO", "E10 regra %s tipo C marcada como "
+                                     "hard-rule (pista nao verificada nao "
+                                     "pode sustentar regra dura sozinha)" % tag))
+        if prov == "D" and strength_norm == "literature-backed":
+            achados.append(("ERRO", "E10 regra %s tipo D apresentada como "
+                                     "literature-backed (heuristica interna "
+                                     "nao e conclusao da literatura)" % tag))
+
+    return achados
+
+
 def audita(diretorio, nomes_vistos=None):
     achados = []
     caminho = os.path.join(BASE, diretorio, "SKILL.md")
@@ -173,9 +265,9 @@ def audita(diretorio, nomes_vistos=None):
     if cercas % 2:
         achados.append(("ERRO", "E7 cercas de codigo impares (%d)" % cercas))
 
+    linhas = texto.count("\n") + 1
     # E9: limite estabelecido pelo proprio criador-skills (secao 2.3):
     # menos de 300 linhas idealmente, maximo absoluto 500.
-    linhas = texto.count("\n") + 1
     if linhas > 500:
         achados.append(("ERRO", "E9 SKILL.md com %d linhas, acima do maximo "
                                 "absoluto de 500; extrair para REFERENCE.md"
@@ -183,6 +275,8 @@ def audita(diretorio, nomes_vistos=None):
     elif linhas > 300:
         achados.append(("INFO", "E9 SKILL.md com %d linhas, acima do ideal de "
                                 "300" % linhas))
+
+    achados.extend(valida_provenance(diretorio, corpo))
 
     return achados
 
